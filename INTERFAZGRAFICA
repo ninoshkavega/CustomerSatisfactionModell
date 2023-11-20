@@ -1,0 +1,148 @@
+#guardamos modelo
+filename = 'rf1.pkl'
+pickle.dump(rf,open(filename,'wb'))
+
+
+# In[113]:
+
+
+rf_loaded = pickle.load(open(filename,'rb'))
+
+
+# In[114]:
+
+
+#guardamos las columnas sin satisfaccion
+with open('categories_ohe.pickle','wb') as handle:
+    pickle.dump(data_x.columns, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+# In[89]:
+
+
+import pickle
+import gradio as gr
+
+
+# In[135]:
+
+
+#DEFINIENDO LOS PARAMETROS 
+parametros = ["Age",
+             "Class",
+             "wifi",
+             "booking",
+             "seat",
+              "checkin"]
+
+
+
+# In[136]:
+
+
+#CARGANDO MODELO
+
+archivo_ruta = r'C:\Users\geosh\Downloads\rf1.pkl'
+
+with open(archivo_ruta, "rb") as f:
+    model = pickle.load(f)
+
+
+# In[119]:
+
+
+#COLUMNAS 
+columns_path = r'C:\Users\geosh\Downloads\categories_ohe.pickle'
+
+
+# In[120]:
+
+
+with open(columns_path,'rb') as handle:
+    ohe_tr = pickle.load(handle)
+
+
+# In[137]:
+
+
+def predict(*args):
+    answer_dict = {}
+    
+    for i in range(len(parametros)):
+        answer_dict[parametros[i]]=[args[i]]
+        
+    single_instance = pd.DataFrame.from_dict(answer_dict)
+    
+    #reformat columns
+    single_instance_ohe = pd.get_dummies(single_instance).reindex(columns=ohe_tr).fillna(0)
+    
+    prediction = model.predict(single_instance_ohe) ##verificar ese model.predict
+    
+    response = format(prediction[0],'.2f')
+    
+    return response
+
+
+# # interfaz gráfica
+
+# In[138]:
+
+
+with gr.Blocks() as demo:
+    gr.Markdown(
+    """
+    # Modelo de Satisfacción""")
+    with gr.Row():
+        with gr.Column():
+            gr.Markdown(
+            """ 
+            ## ¿Cliente Satisfecho?
+            """
+            )
+            
+            Age = gr.Slider(label="Edad", minimum=10 ,maximum=80, step=5,randomize= True)
+            
+            Class = gr.Radio(
+            label="Clase",
+            choices=["Business","Eco","Eco Plus"],
+            value="Business"
+            )
+            
+            Wifi = gr.Slider(label="Servicio de Wifi", minimum=0 ,maximum=5, step=1,randomize= True)
+            
+            Booking = gr.Slider(label="Facilidad de reserva", minimum=0 ,maximum=5, step=1,randomize= True)
+            
+            Seat = gr.Dropdown(
+            label="Comodidad de asiento",
+            choices=[0,1,2,3,4,5],
+            multiselect=False,
+            value=5)
+            
+            Checkin = gr.Dropdown(
+            label="Experiencia en el CheckIn",
+            choices=[0,1,2,3,4,5],
+            multiselect=False,
+            value=5)
+            
+        with gr.Column():
+            gr.Markdown("""
+            ## Prediccion
+            """
+            )
+            
+            label = gr.Label(label="Score")
+            predict_btn = gr.Button(value="Evaluar")
+            predict_btn.click(
+                predict,
+                inputs=[
+                    Age,
+                    Class,
+                    Wifi,
+                    Booking,
+                    Seat,
+                    Checkin,
+                    ],
+                    outputs=[label],
+                    api_name="prediccion"
+            )
+demo.launch()
